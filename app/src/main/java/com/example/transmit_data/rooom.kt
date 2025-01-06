@@ -41,11 +41,14 @@ fun HistoryScreen(modifier: Modifier = Modifier) {
         Column(modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally) {
-            FilledTonalButton(onClick = { addData() }, modifier = Modifier.padding(vertical = 1.dp)) {
+            FilledTonalButton(onClick = { addData("test") }, modifier = Modifier.padding(vertical = 1.dp)) {
                 Text(text = "Add random data")
             }
             FilledTonalButton(onClick = { listData(numDataPoints) }, modifier = Modifier.padding(vertical = 1.dp)) {
                 Text(text = "List data")
+            }
+            FilledTonalButton(onClick = { deleteData() }, modifier = Modifier.padding(vertical = 1.dp)) {
+                Text(text = "deleteData")
             }
             FilledTonalButton(onClick = { createLog() }, modifier = Modifier.padding(vertical = 1.dp)) {
                 Text(text = "createLog")
@@ -54,6 +57,17 @@ fun HistoryScreen(modifier: Modifier = Modifier) {
                 Text(text = "deleteLogs")
             }
             Text(numDataPoints.intValue.toString())
+        }
+    }
+}
+
+fun deleteData() {
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            val dataPoints = MainActivity.main_database.dataDao().deleteData()
+            Log.e("rooom", dataPoints.toString())
+        } catch (e: Exception) {
+            Log.e("rooom", "Error creating user: ${e.message}")
         }
     }
 }
@@ -96,19 +110,19 @@ fun listData(numDataPoints: MutableIntState) {
         try {
             val dataPoints = MainActivity.main_database.dataDao().getAllData()
             Log.e("rooom", dataPoints.toString())
+            Log.e("rooom", dataPoints.size.toString())
         } catch (e: Exception) {
             Log.e("rooom", "Error creating user: ${e.message}")
         }
     }
 }
 
-fun addData() {
-    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm ss.SSS")
-    val current = LocalDateTime.now().format(formatter)
-    val newData = DataPoint(runID = 1, data = Random.nextInt(1,100), time = current.toString())
+fun addData(time: String) {
+    val newData = DataPoint(runID = 1, data = Random.nextInt(1,100), time = time)
     CoroutineScope(Dispatchers.IO).launch {
         try {
             MainActivity.main_database.dataDao().newData(newData)
+            Log.d("rooom", "data added")
         } catch (e: Exception) {
             Log.e("rooom", "Error creating user: ${e.message}")
         }

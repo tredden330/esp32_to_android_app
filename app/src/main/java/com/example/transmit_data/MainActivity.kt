@@ -169,6 +169,9 @@ fun NetworkScreen(modifier: Modifier = Modifier) {
                         } else {
                             dataLoad.value = text
                             dataHistory.add(text.toInt())
+                            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm ss.SSS")
+                            val current = LocalDateTime.now().format(formatter)
+                            addData(current)
                             //Log.d("12345", "incoming message: $current")
                         }
                     }
