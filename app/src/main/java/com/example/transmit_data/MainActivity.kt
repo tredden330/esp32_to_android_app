@@ -18,6 +18,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -129,7 +130,7 @@ fun NetworkScreen(modifier: Modifier = Modifier) {
             var success = remember { mutableStateOf(false) }
             var numMessages = remember { mutableIntStateOf(0) }
             var dataLoad = remember { mutableStateOf("hi") }
-            var dataHistory = remember { mutableListOf<Int>() }
+            var dataHistory = remember { mutableStateListOf<Int>() }
 
 
 
@@ -175,7 +176,9 @@ fun NetworkScreen(modifier: Modifier = Modifier) {
                             message.value = text
                         } else {
                             dataLoad.value = text
-                            dataHistory.add(text.toInt())
+                            CoroutineScope(Dispatchers.Main).launch {
+                                dataHistory.add(text.toInt())
+                            }
                             val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm ss.SSS")
                             val current = LocalDateTime.now().format(formatter)
                             addData(current)

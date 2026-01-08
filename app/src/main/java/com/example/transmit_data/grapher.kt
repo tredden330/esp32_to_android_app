@@ -41,7 +41,7 @@ fun Graph(modifier: Modifier = Modifier, currValues: MutableList<Int>) {
 
         .drawBehind {
             val list = currValues.toMutableList()
-            val max = list.maxOrNull()?.toFloat()
+            val max = (list.maxOrNull() ?: 0).coerceAtLeast(1).toFloat()
             val y_size = 600
 
             for ((index, value) in list.withIndex()) {  //make a copy of the list so that a concurrent modification exception is not thrown
