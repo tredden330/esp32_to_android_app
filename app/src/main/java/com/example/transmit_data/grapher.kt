@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 
 @Composable
 fun Graph(modifier: Modifier = Modifier, currValues: MutableList<Int>) {
@@ -39,12 +40,16 @@ fun Graph(modifier: Modifier = Modifier, currValues: MutableList<Int>) {
         .fillMaxHeight()
 
         .drawBehind {
+            val list = currValues.toMutableList()
+            val max = list.maxOrNull()?.toFloat()
+            val y_size = 600
 
-            for ((index, value) in currValues.toMutableList().withIndex()) {  //make a copy of the list so that a concurrent modification exception is not thrown
+            for ((index, value) in list.withIndex()) {  //make a copy of the list so that a concurrent modification exception is not thrown
+                //Log.d("grapherr", ((value.toFloat()/max)*y_size.toFloat()).toString())
                 drawCircle(
                     Color.Red, center = Offset(
                         (index - offsetX.toInt()).dp.toPx(),
-                        (value).dp.toPx()
+                        abs(((value.toFloat()/ max!!)*y_size.toFloat())-y_size).dp.toPx()
                     ),
                     radius = 2.dp.toPx()
                 )

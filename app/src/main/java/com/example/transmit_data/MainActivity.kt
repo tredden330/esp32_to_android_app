@@ -39,6 +39,7 @@ import okhttp3.WebSocketListener
 import okio.ByteString
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
 
@@ -75,19 +76,22 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
     var screenState = remember { mutableIntStateOf(0) }
     when (screenState.intValue) {
         0 -> {
-            OnboardingScreen(onConnectClicked = { screenState.intValue = 1 }, onHistoricalClicked = { screenState.intValue = 2 })
+            OnboardingScreen(onConnectClicked = { screenState.intValue = 1 }, onInspectorClicked = { screenState.intValue = 2 }, onHistoricalClicked = {screenState.intValue = 3})
         }
         1 -> {
             NetworkScreen()
         }
         2 -> {
-            HistoryScreen()
+            InspectorScreen()
+        }
+        3 -> {
+            DataScreen()
         }
     }
 }
 
 @Composable
-fun OnboardingScreen(modifier: Modifier = Modifier, onConnectClicked: () -> Unit, onHistoricalClicked: () -> Unit) {
+fun OnboardingScreen(modifier: Modifier = Modifier, onConnectClicked: () -> Unit, onInspectorClicked: () -> Unit, onHistoricalClicked: () -> Unit) {
 
     //var showOnboarding = remember { mutableStateOf("hi there") }
 
@@ -100,8 +104,11 @@ fun OnboardingScreen(modifier: Modifier = Modifier, onConnectClicked: () -> Unit
             FilledTonalButton(onClick = onConnectClicked, modifier = Modifier.padding(vertical = 1.dp)) {
                 Text(text = "Connect to Instrument")
             }
+            FilledTonalButton(onClick = onInspectorClicked, modifier = Modifier.padding(vertical = 10.dp)) {
+                Text(text = "Database Inspector")
+            }
             FilledTonalButton(onClick = onHistoricalClicked, modifier = Modifier.padding(vertical = 10.dp)) {
-                Text(text = "Load historical data")
+                Text(text = "View Data")
             }
         }
     }

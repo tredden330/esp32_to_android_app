@@ -32,7 +32,7 @@ import kotlin.random.Random
 
 
 @Composable
-fun HistoryScreen(modifier: Modifier = Modifier) {
+fun InspectorScreen(modifier: Modifier = Modifier) {
 
     //var showOnboarding = remember { mutableStateOf("hi there") }
     var numDataPoints = remember { mutableIntStateOf(0) }
@@ -53,10 +53,24 @@ fun HistoryScreen(modifier: Modifier = Modifier) {
             FilledTonalButton(onClick = { createLog() }, modifier = Modifier.padding(vertical = 1.dp)) {
                 Text(text = "createLog")
             }
+            FilledTonalButton(onClick = { listLogs(numDataPoints) }, modifier = Modifier.padding(vertical = 1.dp)) {
+                Text(text = "List Logs")
+            }
             FilledTonalButton(onClick = { deleteLogs() }, modifier = Modifier.padding(vertical = 1.dp)) {
                 Text(text = "deleteLogs")
             }
             Text(numDataPoints.intValue.toString())
+        }
+    }
+}
+
+fun listLogs(numDataPoints: MutableIntState) {
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            val dataPoints = MainActivity.main_database.LogDao().getLogs()
+            numDataPoints.intValue = dataPoints.size
+        } catch (e: Exception) {
+            Log.e("rooom", "Error creating user: ${e.message}")
         }
     }
 }
@@ -109,8 +123,9 @@ fun listData(numDataPoints: MutableIntState) {
     CoroutineScope(Dispatchers.IO).launch {
         try {
             val dataPoints = MainActivity.main_database.dataDao().getAllData()
-            Log.e("rooom", dataPoints.toString())
+            Log.e("rooom", MainActivity.main_database.dataDao().getTimes().toString())
             Log.e("rooom", dataPoints.size.toString())
+            numDataPoints.intValue = dataPoints.size
         } catch (e: Exception) {
             Log.e("rooom", "Error creating user: ${e.message}")
         }
@@ -122,7 +137,7 @@ fun addData(time: String) {
     CoroutineScope(Dispatchers.IO).launch {
         try {
             MainActivity.main_database.dataDao().newData(newData)
-            Log.d("rooom", "data added")
+            //Log.d("rooom", "data added")
         } catch (e: Exception) {
             Log.e("rooom", "Error creating user: ${e.message}")
         }
@@ -147,6 +162,9 @@ data class RunLog(
 interface DataDao {
     @Query("SELECT * FROM data")
     suspend fun getAllData(): List<DataPoint>
+
+    @Query("SELECT time FROM data")
+    suspend fun getTimes(): List<String>
 
     @Insert
     suspend fun newData(user: DataPoint)
