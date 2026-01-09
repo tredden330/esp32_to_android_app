@@ -37,7 +37,7 @@ fun Graph(modifier: Modifier = Modifier, currValues: MutableList<Int>) {
     Spacer( modifier = Modifier
         .offset(y = 80.dp)
         .fillMaxWidth()
-        .fillMaxHeight()
+        .height(300.dp)
 
         .drawBehind {
             val list = currValues.toMutableList()
@@ -49,7 +49,7 @@ fun Graph(modifier: Modifier = Modifier, currValues: MutableList<Int>) {
                 drawCircle(
                     Color.Red, center = Offset(
                         (index - offsetX.toInt()).dp.toPx(),
-                        abs(((value.toFloat()/ max!!)*y_size.toFloat())-y_size).dp.toPx()
+                        abs(((value.toFloat()/ max)*y_size.toFloat())-y_size).dp.toPx()
                     ),
                     radius = 2.dp.toPx()
                 )

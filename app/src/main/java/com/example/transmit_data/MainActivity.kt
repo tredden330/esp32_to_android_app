@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -117,96 +118,111 @@ fun OnboardingScreen(modifier: Modifier = Modifier, onConnectClicked: () -> Unit
 
 @Composable
 fun NetworkScreen(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+
+    // Compose states
+    val message = remember { mutableStateOf("waiting...") }
+    val success = remember { mutableStateOf(false) }
+    val numMessages = remember { mutableIntStateOf(0) }
+    val dataLoad = remember { mutableStateOf("hi") }
+    val dataHistory = remember { mutableStateListOf<Int>() }
+    val webSocketState = remember { mutableStateOf<WebSocket?>(null) }
+
+    val uiScope = rememberCoroutineScope() // for safe main-thread updates
+
+    val ledOn = remember { mutableStateOf(false) }
 
     Surface(color = MaterialTheme.colorScheme.primary) {
-
-        Column(modifier = Modifier
-            .fillMaxSize()
-            .padding(vertical = 50.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(vertical = 50.dp),
             verticalArrangement = Arrangement.Top,
-            horizontalAlignment = Alignment.CenterHorizontally) {
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
 
-            var message = remember { mutableStateOf("") }
-            var success = remember { mutableStateOf(false) }
-            var numMessages = remember { mutableIntStateOf(0) }
-            var dataLoad = remember { mutableStateOf("hi") }
-            var dataHistory = remember { mutableStateListOf<Int>() }
-
-
-
+            // Only connect if not already connected
             if (!success.value) {
-                Text(text = "waiting...")
+                Text(text = "waiting for connection...")
 
-                val okHttpClient = OkHttpClient()   //wss://echo.websocket.org is a great website to test the websocket client against a server
-                val request = Request.Builder().url("ws://192.168.4.1/ws").build()  //connect to esp32
-                //val request = Request.Builder().url("wss://echo.websocket.org").build()
-                val webSocket = okHttpClient.newWebSocket(request, object: WebSocketListener() {
+                // Create WebSocket once
+                val okHttpClient = OkHttpClient()
+                val request = Request.Builder().url("ws://192.168.4.1/ws").build()
+
+                // Open WebSocket
+                val webSocket = okHttpClient.newWebSocket(request, object : WebSocketListener() {
                     override fun onOpen(webSocket: WebSocket, response: Response) {
+                        uiScope.launch {
+                            message.value = "Connected to ESP32"
+                            success.value = true
+                            webSocketState.value = webSocket // store reference for button
+                        }
 
-                        message.value = response.headers.toString()
-                        success.value = true
-
+                        // Optional: log to Room database
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
                                 val max = MainActivity.main_database.LogDao().getRunIDs().maxOrNull()
-                                var id = 0
-                                if (max == null) {
-                                    id = 1
-                                } else {
-                                    id = max+1
-                                }
+                                val id = if (max == null) 1 else max + 1
                                 val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm ss.SSS")
                                 val current = LocalDateTime.now().format(formatter)
                                 val newLog = RunLog(runID = id, time = current.toString())
                                 MainActivity.main_database.LogDao().newLog(newLog)
                                 Log.e("rooom", MainActivity.main_database.LogDao().getLogs().toString())
                             } catch (e: Exception) {
-                                Log.e("rooom", "Error creating user: ${e.message}")
+                                Log.e("rooom", "Error creating log: ${e.message}")
                             }
                         }
 
-                        val result = webSocket.send("identify")
-                        //Log.d("12345", "message status: $result")
+                        webSocket.send("identify")
                     }
 
-                    //if string data is passed through websocket this is called
                     override fun onMessage(webSocket: WebSocket, text: String) {
-                        numMessages.value += 1
-                        if (text.contains("Instrument")) { //first message the server sends will contain "Instrument"
-                            message.value = text
-                        } else {
-                            dataLoad.value = text
-                            CoroutineScope(Dispatchers.Main).launch {
+                        uiScope.launch {
+                            numMessages.value += 1
+
+                            if (text.contains("Instrument")) {
+                                message.value = text
+                            } else {
+                                dataLoad.value = text
                                 dataHistory.add(text.toInt())
+                                val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm ss.SSS")
+                                val current = LocalDateTime.now().format(formatter)
+                                addData(current)
                             }
-                            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm ss.SSS")
-                            val current = LocalDateTime.now().format(formatter)
-                            addData(current)
-                            //Log.d("12345", "incoming message: $current")
                         }
                     }
 
-                    //if message is in byte form this is called
                     override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-                        super.onMessage(webSocket, bytes)
-                        message.value = "message received!!"
-
+                        uiScope.launch {
+                            message.value = "Received binary message!"
+                        }
                     }
 
-                    override fun onFailure(
-                        webSocket: WebSocket,
-                        t: Throwable,
-                        response: Response?
-                    ) {
-                        super.onFailure(webSocket, t, response)
-                        //Log.d("12345", t.message.toString())
-                        message.value = t.message.toString()
+                    override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                        uiScope.launch {
+                            message.value = "Connection failed: ${t.message}"
+                        }
                     }
                 })
-            }    else {
+            } else {
+                // Already connected → show UI
                 Text(text = message.value)
-                Text(text = dataLoad.value, modifier.offset(y=20.dp))
+                Text(text = dataLoad.value, modifier = Modifier.offset(y = 20.dp))
+
+                // Graph
                 Graph(modifier, dataHistory)
+
+                FilledTonalButton(
+                    onClick = {
+                        val command = if (ledOn.value) "off" else "on"
+                        webSocketState.value?.send(command)
+                        ledOn.value = !ledOn.value
+                        message.value = "Sent $command command!"
+                    },
+                    modifier = Modifier.padding(vertical = 16.dp)
+                ) {
+                    Text(text = if (ledOn.value) "Turn LED OFF" else "Turn LED ON")
+                }
             }
         }
     }
